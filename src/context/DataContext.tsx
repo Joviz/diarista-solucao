@@ -79,22 +79,27 @@ function toAtendimentoFormData(atendimento: Atendimento): AtendimentoFormData {
 }
 
 function toAtendimentoFirestore(atendimento: Atendimento, userId: string): AtendimentoFirestore {
-  return {
+  const data: Partial<AtendimentoFirestore> = {
     id: atendimento.id,
     cliente: atendimento.cliente,
     endereco: atendimento.endereco,
     data: atendimento.data,
     horario: atendimento.horario,
-    duracao: atendimento.duracao,
     valorCombinado: atendimento.valorCombinado,
     situacao: atendimento.situacao,
-    observacao: atendimento.observacao,
-    dataRecebimento: atendimento.dataRecebimento,
-    valorRecebido: atendimento.valorRecebido,
     createdAt: atendimento.createdAt,
     updatedAt: atendimento.updatedAt,
     userId,
   };
+
+  // Só adiciona campos opcionais se não forem undefined/empty
+  if (atendimento.duracao) data.duracao = atendimento.duracao;
+  if (atendimento.observacao) data.observacao = atendimento.observacao;
+  if (atendimento.dataRecebimento) data.dataRecebimento = atendimento.dataRecebimento;
+  if (atendimento.valorRecebido !== undefined && atendimento.valorRecebido !== null)
+    data.valorRecebido = atendimento.valorRecebido;
+
+  return data as AtendimentoFirestore;
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {

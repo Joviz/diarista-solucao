@@ -122,6 +122,7 @@ export function AtendimentoForm({
   }, [valorRecebidoWatch, form]);
 
   const onSubmit = async (data: AtendimentoFormData) => {
+    console.log('onSubmit chamado com:', data);
     setSubmitError(null);
     setIsSubmitting(true);
     try {
@@ -139,11 +140,15 @@ export function AtendimentoForm({
           ? Math.round(parseFloat(data.valorRecebido.replace(',', '.')) * 100)
           : undefined,
       };
+      console.log('Dados processados:', atendimentoData);
       if (isEditing && editingId) {
+        console.log('Atualizando atendimento:', editingId);
         await updateAtendimento(editingId, atendimentoData);
       } else {
+        console.log('Criando novo atendimento');
         await addAtendimento(atendimentoData);
       }
+      console.log('Sucesso, resetando formulário');
       form.reset();
       onSuccess();
     } catch (error) {
