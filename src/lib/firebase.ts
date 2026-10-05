@@ -149,14 +149,29 @@ export async function saveAtendimentosToFirebase(
 ): Promise<void> {
   const db = getFirebaseDb();
   const batch = writeBatch(db);
-  const atendimentosRef = collection(db, 'atendimentos');
 
-  const existingSnapshot = await getDocs(query(atendimentosRef, where('userId', '==', userId)));
-  existingSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
+  // Get existing documents to know which ones to update/delete
+  const existingSnapshot = await getDocs(
+    query(collection(db, 'atendimentos'), where('userId', '==', userId))
+  );
+  const existingDocs = new Map<string, QueryDocumentSnapshot<DocumentData>>();
+  existingSnapshot.docs.forEach((doc) => {
+    existingDocs.set(doc.id, doc);
+  });
+
+  const incomingIds = new Set<string>();
 
   atendimentos.forEach((a) => {
-    const ref = doc(atendimentosRef);
+    incomingIds.add(a.id);
+    const ref = doc(db, 'atendimentos', a.id); // Use existing ID, not random
     batch.set(ref, toFirestore({ ...a, userId }));
+  });
+
+  // Delete documents that no longer exist in the incoming list
+  existingDocs.forEach((docSnap, id) => {
+    if (!incomingIds.has(id)) {
+      batch.delete(docSnap.ref);
+    }
   });
 
   await batch.commit();

@@ -39,6 +39,8 @@ import {
   DialogFooter,
 } from '@/components/ui/Dialog';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { Trash2 } from 'lucide-react';
+import { useData } from '@/context/DataContext';
 
 const SITUACOES = [
   { value: 'todas', label: 'Todas' },
@@ -108,6 +110,22 @@ export function FechamentoPage() {
     const params = new URLSearchParams(searchParams);
     params.set('mes', mes);
     setSearchParams(params, { replace: true });
+  };
+
+  const { deleteAtendimento } = useData();
+
+  const handleDelete = async (id: string, cliente: string) => {
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir o atendimento de "${cliente}"? Esta ação não pode ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteAtendimento(id);
+    } catch (error) {
+      console.error('Erro ao excluir atendimento:', error);
+      alert('Erro ao excluir atendimento. Tente novamente.');
+    }
   };
 
   return (
@@ -321,6 +339,15 @@ export function FechamentoPage() {
                             Reativar
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDelete(atendimento.id, atendimento.cliente)}
+                          className="text-red-600 hover:text-red-700"
+                          aria-label={`Excluir ${atendimento.cliente}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -402,6 +429,17 @@ export function FechamentoPage() {
                           {atendimento.situacao === 'cancelado' && atendimento.observacao && (
                             <span className="text-red-600">Motivo: {atendimento.observacao}</span>
                           )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(atendimento.id, atendimento.cliente)}
+                            className="text-red-600 hover:text-red-700"
+                            aria-label={`Excluir ${atendimento.cliente}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
