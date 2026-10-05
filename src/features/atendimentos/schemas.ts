@@ -1,19 +1,28 @@
 import { z } from 'zod';
 
+const dateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)')
+  .optional()
+  .or(z.literal('').transform(() => undefined));
+
+const timeString = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/, 'Horário inválido (HH:mm)')
+  .optional()
+  .or(z.literal('').transform(() => undefined));
+
 export const atendimentoSchema = z.object({
   id: z.string().uuid(),
   cliente: z.string().min(1, 'Nome do cliente é obrigatório').max(100),
   endereco: z.string().min(1, 'Endereço é obrigatório').max(200),
-  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)'),
-  horario: z.string().regex(/^\d{2}:\d{2}$/, 'Horário inválido (HH:mm)'),
+  data: dateString,
+  horario: timeString,
   duracao: z.string().max(20).optional(),
   valorCombinado: z.number().int().min(1, 'Valor deve ser maior que zero'),
   situacao: z.enum(['previsto', 'realizado', 'pago', 'cancelado']),
   observacao: z.string().max(500).optional(),
-  dataRecebimento: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  dataRecebimento: dateString,
   valorRecebido: z.number().int().min(0).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -22,7 +31,7 @@ export const atendimentoSchema = z.object({
 const atendimentoFormSchemaBase = z.object({
   cliente: z.string().min(1, 'Nome do cliente é obrigatório').max(100),
   endereco: z.string().min(1, 'Endereço é obrigatório').max(200),
-  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)'),
   horario: z.string().regex(/^\d{2}:\d{2}$/, 'Horário inválido (HH:mm)'),
   duracao: z.string().max(20).optional(),
   valorCombinado: z
@@ -37,13 +46,11 @@ const atendimentoFormSchemaBase = z.object({
     ),
   situacao: z.enum(['previsto', 'realizado', 'pago', 'cancelado']),
   observacao: z.string().max(500).optional(),
-  dataRecebimento: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  dataRecebimento: dateString,
   valorRecebido: z
     .string()
     .optional()
+    .or(z.literal('').transform(() => undefined))
     .refine(
       (val) => {
         if (!val) return true;
