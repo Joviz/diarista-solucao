@@ -8,6 +8,7 @@ import {
   signOut,
   onAuthStateChanged,
   type User,
+  connectAuthEmulator,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -23,7 +24,10 @@ import {
   Timestamp,
   type QueryDocumentSnapshot,
   type DocumentData,
+  connectFirestoreEmulator,
 } from 'firebase/firestore';
+
+import { USE_EMULATORS } from './emulator';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -53,6 +57,14 @@ export function initFirebase() {
   }
   auth = getAuth(app);
   db = getFirestore(app);
+
+  // Connect to emulators in development/test mode
+  if (USE_EMULATORS) {
+    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+    connectFirestoreEmulator(db, 'localhost', 8080);
+    console.log('Connected to Firebase Emulators');
+  }
+
   return { app, auth, db };
 }
 

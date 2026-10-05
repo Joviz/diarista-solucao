@@ -226,6 +226,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
           newAtendimento.valorRecebido = undefined;
           newAtendimento.dataRecebimento = undefined;
         }
+        // Desfazer pagamento: ao voltar de 'pago' para 'realizado', limpar dados de pagamento
+        if (a.situacao === 'pago' && situacao === 'realizado') {
+          newAtendimento.valorRecebido = undefined;
+          newAtendimento.dataRecebimento = undefined;
+        }
         return newAtendimento;
       }
       return a;
