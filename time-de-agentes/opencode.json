@@ -1,0 +1,97 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "nvidia/nemotron-3-super",
+  "subagent_depth": 2,
+  "share": "manual",
+
+  "agent": {
+    "orquestrador": {
+      "description": "Agente principal. Recebe o pedido, divide em etapas, aciona os especialistas na ordem certa, roda as verificacoes e so para quando o projeto estiver completo, testado e sem erros. Nao pede aprovacao intermediaria.",
+      "mode": "primary",
+      "model": "nvidia/nemotron-3-super",
+      "temperature": 0.2,
+      "tools": { "write": true, "edit": true, "bash": true },
+      "prompt": "{file:./.opencode/prompts/orquestrador.md}"
+    },
+
+    "planejador": {
+      "description": "Especialista em transformar o pedido do usuario em um PLAN.md com etapas pequenas, criterios de pronto e ordem de execucao. Usado no inicio do projeto e sempre que o escopo mudar.",
+      "mode": "subagent",
+      "model": "nvidia/nemotron-3-super",
+      "temperature": 0.2,
+      "tools": { "write": true, "edit": true, "bash": false },
+      "prompt": "{file:./.opencode/prompts/planejador.md}"
+    },
+
+    "banco-de-dados": {
+      "description": "Especialista em modelagem de dados: schema de agenda, servicos, precos, clientes e horarios, migrations e Row Level Security. Aciona sozinho quando a tarefa envolve schema, migration ou regra de dados.",
+      "mode": "subagent",
+      "model": "nvidia/nemotron-3-super",
+      "temperature": 0.1,
+      "tools": { "write": true, "edit": true, "bash": true },
+      "prompt": "{file:./.opencode/prompts/banco-de-dados.md}"
+    },
+
+    "backend": {
+      "description": "Especialista em API, regras de negocio de agendamento (conflito de horario, duracao de servico, calculo de valores) e integracao com o banco. Nao mexe em UI.",
+      "mode": "subagent",
+      "model": "nvidia/nemotron-3-super",
+      "temperature": 0.15,
+      "tools": { "write": true, "edit": true, "bash": true },
+      "prompt": "{file:./.opencode/prompts/backend.md}"
+    },
+
+    "frontend": {
+      "description": "Especialista em React, TypeScript, Redux Toolkit, Tailwind e shadcn/ui. Constroi as telas de agenda, cadastro de servicos e valores seguindo o AGENTS.md. Nao mexe em schema nem em API.",
+      "mode": "subagent",
+      "model": "nvidia/nemotron-3-super",
+      "temperature": 0.2,
+      "tools": { "write": true, "edit": true, "bash": true },
+      "prompt": "{file:./.opencode/prompts/frontend.md}"
+    },
+
+    "seguranca": {
+      "description": "Especialista em seguranca: valida autenticacao, RLS, segredos, headers, sanitizacao de input e roda os testes de seguranca do projeto. Acionado ao fim de cada etapa e obrigatorio antes do commit.",
+      "mode": "subagent",
+      "model": "nvidia/nemotron-3-nano",
+      "temperature": 0.1,
+      "tools": { "write": true, "edit": true, "bash": true },
+      "prompt": "{file:./.opencode/prompts/seguranca.md}"
+    },
+
+    "qa": {
+      "description": "Especialista em testes: escreve e roda testes unitarios, de integracao e smoke tests, confere os criterios de pronto do PLAN.md e reporta o que falhou. Acionado ao fim de cada etapa.",
+      "mode": "subagent",
+      "model": "nvidia/nemotron-3-nano",
+      "temperature": 0.1,
+      "tools": { "write": true, "edit": true, "bash": true },
+      "prompt": "{file:./.opencode/prompts/qa.md}"
+    },
+
+    "revisor": {
+      "description": "Especialista em revisao final: le o PLAN.md, confere se todas as funcionalidades pedidas existem e funcionam, roda o projeto de ponta a ponta e so aprova se estiver tudo certo. E o ultimo a falar antes de devolver ao usuario.",
+      "mode": "subagent",
+      "model": "nvidia/nemotron-3-super",
+      "temperature": 0.1,
+      "tools": { "write": false, "edit": false, "bash": true },
+      "prompt": "{file:./.opencode/prompts/revisor.md}"
+    },
+
+    "pesquisador": {
+      "description": "Especialista em buscar documentacao atualizada de bibliotecas, resolver duvidas tecnicas e checar se um pacote existe e e confiavel antes de instalar. Nao escreve codigo de producao.",
+      "mode": "subagent",
+      "model": "nvidia/nemotron-3-nano",
+      "temperature": 0.3,
+      "tools": { "write": false, "edit": false, "bash": false, "webfetch": true }
+    }
+  },
+
+  "permission": {
+    "bash": {
+      "*": "allow",
+      "git push --force*": "deny",
+      "rm -rf*": "ask",
+      "git push origin main*": "deny"
+    }
+  }
+}
