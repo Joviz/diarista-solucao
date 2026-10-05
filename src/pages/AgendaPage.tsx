@@ -1,48 +1,56 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/lib/utils';
 import {
   formatDate,
   formatTime,
   formatCurrency,
   getWeekStart,
-  addWeeks,
   formatDateLong,
   generateWhatsAppMessage,
   openWhatsApp,
   getMesAtual,
-  addMonths,
   getMesLabel,
 } from '@/lib/utils';
-import { initialize, selectAgendaSemanal, selectAtendimentos } from '@/features/atendimentos';
-import type { AppDispatch, RootState } from '@/app/store';
+import { selectAgendaSemanal, selectAtendimentos } from '@/features/atendimentos';
+import type { RootState } from '@/app/store';
 import { AtendimentoForm } from '@/features/atendimentos/components/AtendimentoForm';
 import { SITUACAO_LABELS, SITUACAO_CORES } from '@/features/atendimentos/types';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/Popover';
+import { useNavigate } from 'react-router-dom';
+import { Calendar } from 'lucide-react';
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const MESES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
 
 export function AgendaPage() {
-  const dispatch = useDispatch<AppDispatch>();
-  const [semanaInicio, setSemanaInicio] = useState(getWeekStart());
+  const [semanaInicio] = useState(getWeekStart());
   const [mesAtual, setMesAtual] = useState(getMesAtual());
   const [visualizacao, setVisualizacao] = useState<'semanal' | 'mensal'>('semanal');
+  const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
+  const [mesPopoverAberto, setMesPopoverAberto] = useState(false);
+  const [anoPopover, setAnoPopover] = useState(() => new Date().getFullYear());
   const [editingId, setEditingId] = useState<string | null>(null);
   const agenda = useSelector((state: RootState) => selectAgendaSemanal(state, semanaInicio));
   const todosAtendimentos = useSelector((state: RootState) => selectAtendimentos(state));
   const hoje = new Date().toISOString().split('T')[0];
-
-  useEffect(() => {
-    dispatch(initialize());
-  }, [dispatch]);
-
-  const semanaAnterior = () => setSemanaInicio((s) => addWeeks(s, -1));
-  const proximaSemana = () => setSemanaInicio((s) => addWeeks(s, 1));
-  const estaSemana = () => setSemanaInicio(getWeekStart());
-  const mesAnterior = () => setMesAtual((m) => addMonths(m, -1));
-  const proximoMes = () => setMesAtual((m) => addMonths(m, 1));
-  const esteMes = () => setMesAtual(getMesAtual());
+  const navigate = useNavigate();
 
   const diasDoMes = useMemo(() => {
     const [ano, mes] = mesAtual.split('-').map(Number);
@@ -95,29 +103,105 @@ export function AgendaPage() {
     openWhatsApp(mensagem);
   };
 
+  const handleAtendimentoClick = (atendimento: (typeof todosAtendimentos)[0]) => {
+    const mesAtendimento = atendimento.data.substring(0, 7);
+    navigate(`/fechamento?mes=${mesAtendimento}&atendimento=${atendimento.id}`);
+  };
+
+  const handleDiaClick = (data: string) => {
+    setDiaSelecionado(data === diaSelecionado ? null : data);
+  };
+
+  const mesLabel = getMesLabel(mesAtual);
+
   return (
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          {visualizacao === 'semanal' ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Semana de {formatDate(semanaInicio)} a{' '}
-                {formatDate(
-                  addWeeks(semanaInicio, 1)
-                    .split('T')[0]
-                    .replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3/$2')
-                )}
-              </p>
-              <h2 className="text-xl font-semibold">{formatDateLong(semanaInicio)}</h2>
-            </>
-          ) : (
-            <>
-              <h2 className="text-xl font-semibold">{getMesLabel(mesAtual)}</h2>
-              <p className="text-sm text-muted-foreground">Calendário mensal</p>
-            </>
+        <div className="flex items-center gap-3">
+          <Popover open={mesPopoverAberto} onOpenChange={setMesPopoverAberto}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" className="h-10 px-3 gap-2" aria-label="Selecionar mês e ano">
+                <Calendar className="w-5 h-5 text-muted-foreground" />
+                <span className="font-medium text-lg">{mesLabel}</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="start">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-2 py-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setAnoPopover((a) => a - 1);
+                      const novoMes = `${anoPopover - 1}-${String(new Date(mesAtual).getMonth() + 1).padStart(2, '0')}`;
+                      setMesAtual(novoMes);
+                    }}
+                    aria-label="Ano anterior"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </Button>
+                  <span className="font-medium text-lg">{anoPopover}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setAnoPopover((a) => a + 1);
+                      const novoMes = `${anoPopover + 1}-${String(new Date(mesAtual).getMonth() + 1).padStart(2, '0')}`;
+                      setMesAtual(novoMes);
+                    }}
+                    aria-label="Próximo ano"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </Button>
+                </div>
+                <div className="grid grid-cols-4 gap-1 px-2 pb-2">
+                  {MESES.map((mes, index) => {
+                    const mesNum = index + 1;
+                    const mesStr = `${anoPopover}-${String(mesNum).padStart(2, '0')}`;
+                    const isAtual = mesStr === mesAtual;
+                    return (
+                      <Button
+                        key={mes}
+                        variant={isAtual ? 'default' : 'ghost'}
+                        size="sm"
+                        className="h-10 text-sm"
+                        onClick={() => {
+                          setMesAtual(mesStr);
+                          setMesPopoverAberto(false);
+                        }}
+                      >
+                        {mes.substring(0, 3)}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {diaSelecionado && (
+            <span className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+              {formatDateLong(diaSelecionado)}
+            </span>
           )}
         </div>
+
         <div className="flex items-center gap-2">
           <Button
             variant={visualizacao === 'semanal' ? 'default' : 'outline'}
@@ -135,41 +219,6 @@ export function AgendaPage() {
           >
             Mês
           </Button>
-          {visualizacao === 'semanal' ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={semanaAnterior}
-                aria-label="Semana anterior"
-              >
-                ←
-              </Button>
-              <Button variant="outline" size="sm" onClick={estaSemana} aria-label="Esta semana">
-                Hoje
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={proximaSemana}
-                aria-label="Próxima semana"
-              >
-                →
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" onClick={mesAnterior} aria-label="Mês anterior">
-                ←
-              </Button>
-              <Button variant="outline" size="sm" onClick={esteMes} aria-label="Este mês">
-                Hoje
-              </Button>
-              <Button variant="outline" size="sm" onClick={proximoMes} aria-label="Próximo mês">
-                →
-              </Button>
-            </>
-          )}
         </div>
       </div>
 
@@ -181,18 +230,37 @@ export function AgendaPage() {
             const dataStr = data.toISOString().split('T')[0];
             const atendimentosDoDia = agenda.dias[dataStr] || [];
             const isHoje = dataStr === hoje;
+            const isSelecionado = dataStr === diaSelecionado;
 
             return (
-              <Card key={dataStr} className={isHoje ? 'ring-2 ring-primary' : ''}>
+              <Card
+                key={dataStr}
+                className={cn(
+                  isHoje && 'ring-2 ring-primary',
+                  isSelecionado && 'ring-2 ring-purple-500'
+                )}
+                onClick={() => handleDiaClick(dataStr)}
+                style={{ cursor: 'pointer' }}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className={isHoje ? 'font-medium text-primary' : 'font-medium'}>
+                      <span
+                        className={cn(
+                          isHoje ? 'font-medium text-primary' : 'font-medium',
+                          isSelecionado && 'text-purple-600'
+                        )}
+                      >
                         {dia} {formatDate(dataStr)}
                       </span>
                       {isHoje && (
                         <Badge variant="success" className="text-xs">
                           Hoje
+                        </Badge>
+                      )}
+                      {isSelecionado && !isHoje && (
+                        <Badge variant="default" className="text-xs bg-purple-100 text-purple-800">
+                          Selecionado
                         </Badge>
                       )}
                     </div>
@@ -216,6 +284,11 @@ export function AgendaPage() {
                           key={atendimento.id}
                           className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border"
                           role="listitem"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAtendimentoClick(atendimento);
+                          }}
+                          style={{ cursor: 'pointer' }}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
@@ -251,7 +324,10 @@ export function AgendaPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => abrirWhatsApp(atendimento)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  abrirWhatsApp(atendimento);
+                                }}
                                 aria-label={`Confirmar ${atendimento.cliente} via WhatsApp`}
                                 className="text-green-600 hover:text-green-700"
                               >
@@ -268,7 +344,10 @@ export function AgendaPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setEditingId(atendimento.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(atendimento.id);
+                              }}
                               aria-label={`Editar ${atendimento.cliente}`}
                             >
                               <svg
@@ -318,19 +397,29 @@ export function AgendaPage() {
               }
               const dataObj = new Date(data + 'T00:00:00');
               const isHoje = data === hoje;
+              const isSelecionado = data === diaSelecionado;
               const valorDia = valorTotalDia(atendimentos);
               const temAtendimentos = atendimentos.length > 0;
 
               return (
                 <div
                   key={data}
-                  className={`relative min-h-[100px] p-2 border rounded-lg bg-background ${
-                    isHoje ? 'ring-2 ring-primary' : ''
-                  }`}
+                  className={cn(
+                    'relative min-h-[100px] p-2 border rounded-lg bg-background',
+                    isHoje && 'ring-2 ring-primary',
+                    isSelecionado && 'ring-2 ring-purple-500'
+                  )}
                   role="gridcell"
+                  onClick={() => handleDiaClick(data)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className={isHoje ? 'font-medium text-primary' : 'font-medium'}>
+                    <span
+                      className={cn(
+                        isHoje ? 'font-medium text-primary' : 'font-medium',
+                        isSelecionado && 'text-purple-600'
+                      )}
+                    >
                       {dataObj.getDate()}
                     </span>
                     {temAtendimentos && (
@@ -351,6 +440,11 @@ export function AgendaPage() {
                         key={atendimento.id}
                         className="text-xs p-1 bg-muted/50 rounded truncate"
                         title={`${atendimento.cliente} - ${formatTime(atendimento.horario)} - ${formatCurrency(atendimento.valorCombinado)}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAtendimentoClick(atendimento);
+                        }}
+                        style={{ cursor: 'pointer' }}
                       >
                         <span className="font-medium">{atendimento.cliente}</span>
                         <span className="ml-1 text-muted-foreground">

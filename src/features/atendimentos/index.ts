@@ -1,6 +1,6 @@
 export {
   atendimentosSlice,
-  initialize,
+  setAtendimentos,
   addAtendimento,
   updateAtendimento,
   deleteAtendimento,

@@ -23,9 +23,10 @@ import {
   SelectValue,
 } from '@/components/ui/Select';
 import { formatCurrency } from '@/lib/utils';
-import { addAtendimento, updateAtendimento, selectAtendimentoById } from '@/features/atendimentos';
 import { atendimentoFormSchema } from '@/features/atendimentos/schemas';
-import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { useData } from '@/context/DataContext';
+import { useAppSelector } from '@/app/hooks';
+import { selectAtendimentoById } from '@/features/atendimentos/selectors';
 
 type AtendimentoFormData = {
   cliente: string;
@@ -60,7 +61,7 @@ export function AtendimentoForm({
   onSuccess,
   onCancel,
 }: AtendimentoFormProps) {
-  const dispatch = useAppDispatch();
+  const { addAtendimento, updateAtendimento } = useData();
   const existingAtendimento = useAppSelector((state) =>
     editingId ? selectAtendimentoById(state, editingId) : undefined
   );
@@ -126,12 +127,26 @@ export function AtendimentoForm({
     }
   }, [valorRecebidoWatch, form]);
 
-  const onSubmit = (data: AtendimentoFormData) => {
+  const onSubmit = async (data: AtendimentoFormData) => {
     try {
+      const atendimentoData = {
+        cliente: data.cliente,
+        endereco: data.endereco,
+        data: data.data,
+        horario: data.horario,
+        duracao: data.duracao || undefined,
+        valorCombinado: Math.round(parseFloat(data.valorCombinado.replace(',', '.')) * 100),
+        situacao: data.situacao,
+        observacao: data.observacao || undefined,
+        dataRecebimento: data.dataRecebimento || undefined,
+        valorRecebido: data.valorRecebido
+          ? Math.round(parseFloat(data.valorRecebido.replace(',', '.')) * 100)
+          : undefined,
+      };
       if (isEditing && editingId) {
-        dispatch(updateAtendimento({ id: editingId, data }));
+        await updateAtendimento(editingId, atendimentoData);
       } else {
-        dispatch(addAtendimento(data));
+        await addAtendimento(atendimentoData);
       }
       form.reset();
       onSuccess();

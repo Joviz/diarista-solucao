@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -22,7 +23,6 @@ import {
   formatTime,
 } from '@/lib/utils';
 import {
-  initialize,
   selectAtendimentosParaHistorico,
   selectTotaisMes,
   selectMesesComAtendimentos,
@@ -50,9 +50,15 @@ const SITUACOES = [
 
 export function FechamentoPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const [mesAtual, setMesAtual] = useState(getMesAtual());
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const mesInicial = searchParams.get('mes') || getMesAtual();
+  const atendimentoInicial = searchParams.get('atendimento') || null;
+
+  const [mesAtual, setMesAtual] = useState(mesInicial);
   const [filtroSituacao, setFiltroSituacao] = useState('todas');
   const [pagamentoId, setPagamentoId] = useState<string | null>(null);
+  const [scrollToAtendimento, setScrollToAtendimento] = useState<string | null>(atendimentoInicial);
 
   const atendimentos = useSelector((state: RootState) =>
     selectAtendimentosParaHistorico(state, { mes: mesAtual, situacao: filtroSituacao })
@@ -61,17 +67,47 @@ export function FechamentoPage() {
   const mesesDisponiveis = useSelector((state: RootState) => selectMesesComAtendimentos(state));
 
   useEffect(() => {
-    dispatch(initialize());
-  }, [dispatch]);
+    if (scrollToAtendimento) {
+      const element = document.getElementById(`atendimento-${scrollToAtendimento}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('ring-2', 'ring-primary');
+        setTimeout(() => element.classList.remove('ring-2', 'ring-primary'), 3000);
+      }
+      setScrollToAtendimento(null);
+      const params = new URLSearchParams(searchParams);
+      params.delete('atendimento');
+      setSearchParams(params, { replace: true });
+    }
+  }, [atendimentos, scrollToAtendimento, searchParams, setSearchParams]);
 
-  const mesAnterior = () => setMesAtual((m) => addMonths(m, -1));
-  const proximoMes = () => setMesAtual((m) => addMonths(m, 1));
+  const mesAnterior = () => {
+    const novoMes = addMonths(mesAtual, -1);
+    setMesAtual(novoMes);
+    const params = new URLSearchParams(searchParams);
+    params.set('mes', novoMes);
+    setSearchParams(params, { replace: true });
+  };
+  const proximoMes = () => {
+    const novoMes = addMonths(mesAtual, 1);
+    setMesAtual(novoMes);
+    const params = new URLSearchParams(searchParams);
+    params.set('mes', novoMes);
+    setSearchParams(params, { replace: true });
+  };
 
   const handleSituacaoChange = (
     id: string,
     situacao: 'previsto' | 'realizado' | 'pago' | 'cancelado'
   ) => {
     dispatch(updateSituacao({ id, situacao }));
+  };
+
+  const handleMesChange = (mes: string) => {
+    setMesAtual(mes);
+    const params = new URLSearchParams(searchParams);
+    params.set('mes', mes);
+    setSearchParams(params, { replace: true });
   };
 
   return (
@@ -85,18 +121,18 @@ export function FechamentoPage() {
           <Button variant="outline" size="sm" onClick={mesAnterior} aria-label="Mês anterior">
             ←
           </Button>
-          <select
-            value={mesAtual}
-            onChange={(e) => setMesAtual(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-            aria-label="Selecionar mês"
-          >
-            {mesesDisponiveis.map((mes: string) => (
-              <option key={mes} value={mes}>
-                {getMesLabel(mes)}
-              </option>
-            ))}
-          </select>
+          <Select value={mesAtual} onValueChange={handleMesChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {mesesDisponiveis.map((mes: string) => (
+                <SelectItem key={mes} value={mes}>
+                  {getMesLabel(mes)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={proximoMes} aria-label="Próximo mês">
             →
           </Button>
@@ -186,6 +222,7 @@ export function FechamentoPage() {
                   {atendimentos.map((atendimento) => (
                     <div
                       key={atendimento.id}
+                      id={`atendimento-${atendimento.id}`}
                       className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-muted/50 rounded-lg border"
                       role="listitem"
                     >

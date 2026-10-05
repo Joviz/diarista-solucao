@@ -1,29 +1,28 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { formatCurrency, getMesAtual, addMonths, getMesLabel } from '@/lib/utils';
 import {
-  initialize,
   selectTotaisMes,
   selectMesesComAtendimentos,
   selectAtendimentos,
 } from '@/features/atendimentos';
-import type { AppDispatch, RootState } from '@/app/store';
+import type { RootState } from '@/app/store';
 import { AtendimentoForm } from '@/features/atendimentos/components/AtendimentoForm';
 
 export function ResumoPage() {
-  const dispatch = useDispatch<AppDispatch>();
-  const [mesAtual, setMesAtual] = useState(getMesAtual());
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const mesInicial = searchParams.get('mes') || getMesAtual();
+  const [mesAtual, setMesAtual] = useState(mesInicial);
+
   const totais = useSelector((state: RootState) => selectTotaisMes(state, mesAtual));
   const mesesDisponiveis = useSelector((state: RootState) => selectMesesComAtendimentos(state));
   const atendimentos = useSelector((state: RootState) => selectAtendimentos(state));
   const temAtendimentosNoMes = atendimentos.some((a) => a.data.startsWith(mesAtual));
-
-  useEffect(() => {
-    dispatch(initialize());
-  }, [dispatch]);
 
   const progresso = totais.previsto > 0 ? (totais.recebido / totais.previsto) * 100 : 0;
 
@@ -37,8 +36,27 @@ export function ResumoPage() {
     return diasComAtendimentoRealizado.size;
   }, [atendimentos, mesAtual]);
 
-  const mesAnterior = () => setMesAtual((m) => addMonths(m, -1));
-  const proximoMes = () => setMesAtual((m) => addMonths(m, 1));
+  const mesAnterior = () => {
+    const novoMes = addMonths(mesAtual, -1);
+    setMesAtual(novoMes);
+    const params = new URLSearchParams(searchParams);
+    params.set('mes', novoMes);
+    setSearchParams(params, { replace: true });
+  };
+  const proximoMes = () => {
+    const novoMes = addMonths(mesAtual, 1);
+    setMesAtual(novoMes);
+    const params = new URLSearchParams(searchParams);
+    params.set('mes', novoMes);
+    setSearchParams(params, { replace: true });
+  };
+
+  const handleMesChange = (mes: string) => {
+    setMesAtual(mes);
+    const params = new URLSearchParams(searchParams);
+    params.set('mes', mes);
+    setSearchParams(params, { replace: true });
+  };
 
   if (!temAtendimentosNoMes && mesesDisponiveis.length > 0) {
     return (
@@ -49,6 +67,18 @@ export function ResumoPage() {
             <Button variant="outline" size="sm" onClick={mesAnterior} aria-label="Mês anterior">
               ←
             </Button>
+            <Select value={mesAtual} onValueChange={handleMesChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {mesesDisponiveis.map((mes: string) => (
+                  <SelectItem key={mes} value={mes}>
+                    {getMesLabel(mes)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button variant="outline" size="sm" onClick={proximoMes} aria-label="Próximo mês">
               →
             </Button>
@@ -78,18 +108,18 @@ export function ResumoPage() {
           <Button variant="outline" size="sm" onClick={mesAnterior} aria-label="Mês anterior">
             ←
           </Button>
-          <select
-            value={mesAtual}
-            onChange={(e) => setMesAtual(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-            aria-label="Selecionar mês"
-          >
-            {mesesDisponiveis.map((mes: string) => (
-              <option key={mes} value={mes}>
-                {getMesLabel(mes)}
-              </option>
-            ))}
-          </select>
+          <Select value={mesAtual} onValueChange={handleMesChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {mesesDisponiveis.map((mes: string) => (
+                <SelectItem key={mes} value={mes}>
+                  {getMesLabel(mes)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={proximoMes} aria-label="Próximo mês">
             →
           </Button>
@@ -192,3 +222,11 @@ export function ResumoPage() {
     </div>
   );
 }
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';

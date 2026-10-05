@@ -1,8 +1,20 @@
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/DropdownMenu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
+import { useAuth } from '@/context/AuthContext';
+import { LogOut } from 'lucide-react';
 
 export function Layout() {
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const navItems = [
     { path: '/', label: 'Resumo', icon: HomeIcon },
@@ -15,6 +27,37 @@ export function Layout() {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
         <div className="px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-foreground">Agenda da Diarista</h1>
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={user.photoURL || undefined}
+                      alt={user.displayName || 'Usuário'}
+                    />
+                    <AvatarFallback>
+                      {user.displayName?.[0] || user.email?.[0] || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-1 text-sm">
+                  <p className="font-medium truncate">{user.displayName || 'Usuário'}</p>
+                  <p className="text-muted-foreground truncate">{user.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => logout()}
+                  className="flex items-center gap-2 text-red-600"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
