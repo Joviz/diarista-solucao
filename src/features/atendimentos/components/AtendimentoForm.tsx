@@ -8,14 +8,6 @@ import { Label } from '@/components/ui/Label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/Dialog';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -155,6 +147,8 @@ export function AtendimentoForm({
     }
   };
 
+  const isPago = form.watch('situacao') === 'pago';
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -280,14 +274,14 @@ export function AtendimentoForm({
             />
           </div>
 
-          <div id="campos-pagamento" className="space-y-4 hidden" data-situacao-paga="pago">
-            <div className="grid gap-4 sm:grid-cols-2">
+          {isPago && (
+            <div id="campos-pagamento" className="space-y-4 grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="dataRecebimento">Data do recebimento</Label>
+                <Label htmlFor="dataRecebimento">Data do recebimento *</Label>
                 <Input id="dataRecebimento" type="date" {...form.register('dataRecebimento')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="valorRecebido">Valor recebido</Label>
+                <Label htmlFor="valorRecebido">Valor recebido *</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     R$
@@ -301,34 +295,23 @@ export function AtendimentoForm({
                 </div>
               </div>
             </div>
-          </div>
-
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button type="submit" className="w-full sm:w-auto">
-                {isEditing ? 'Salvar Alterações' : 'Adicionar Atendimento'}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {isEditing ? 'Confirmar alterações?' : 'Confirmar novo atendimento?'}
-                </DialogTitle>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => form.reset(defaultValues)}>
-                  Cancelar
-                </Button>
-                <Button type="submit">Confirmar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
-              Cancelar
-            </Button>
           )}
+
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <Button type="submit" className="w-full sm:w-auto">
+              {isEditing ? 'Salvar Alterações' : 'Adicionar Atendimento'}
+            </Button>
+            {onCancel && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                className="w-full sm:w-auto"
+              >
+                Cancelar
+              </Button>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>
