@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -26,6 +26,16 @@ export function ResumoPage() {
   }, [dispatch]);
 
   const progresso = totais.previsto > 0 ? (totais.recebido / totais.previsto) * 100 : 0;
+
+  const diasTrabalhados = useMemo(() => {
+    const diasComAtendimentoRealizado = new Set<string>();
+    atendimentos
+      .filter(
+        (a) => a.data.startsWith(mesAtual) && (a.situacao === 'realizado' || a.situacao === 'pago')
+      )
+      .forEach((a) => diasComAtendimentoRealizado.add(a.data));
+    return diasComAtendimentoRealizado.size;
+  }, [atendimentos, mesAtual]);
 
   const mesAnterior = () => setMesAtual((m) => addMonths(m, -1));
   const proximoMes = () => setMesAtual((m) => addMonths(m, 1));
@@ -134,6 +144,18 @@ export function ResumoPage() {
             <p className="text-xs text-muted-foreground">
               {formatCurrency(totais.canceladosValor)} em valor
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Dias Trabalhados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{diasTrabalhados}</div>
+            <p className="text-xs text-muted-foreground">Dias com atendimento realizado</p>
           </CardContent>
         </Card>
       </div>
