@@ -9,6 +9,7 @@ import {
   formatTime,
   formatCurrency,
   getWeekStart,
+  addWeeks,
   formatDateLong,
   generateWhatsAppMessage,
   openWhatsApp,
@@ -21,7 +22,18 @@ import { AtendimentoForm } from '@/features/atendimentos/components/AtendimentoF
 import { SITUACAO_LABELS, SITUACAO_CORES } from '@/features/atendimentos/types';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/Popover';
 import { useNavigate } from 'react-router-dom';
-import { Calendar } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/AlertDialog';
+import { useData } from '@/context/DataContext';
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 const MESES = [
@@ -40,7 +52,7 @@ const MESES = [
 ];
 
 export function AgendaPage() {
-  const [semanaInicio] = useState(getWeekStart());
+  const [semanaInicio, setSemanaInicio] = useState(getWeekStart());
   const [mesAtual, setMesAtual] = useState(getMesAtual());
   const [visualizacao, setVisualizacao] = useState<'semanal' | 'mensal'>('semanal');
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
@@ -51,6 +63,15 @@ export function AgendaPage() {
   const todosAtendimentos = useSelector((state: RootState) => selectAtendimentos(state));
   const hoje = new Date().toISOString().split('T')[0];
   const navigate = useNavigate();
+  const { deleteAtendimento } = useData();
+
+  const handleDelete = async (id: string) => {
+    await deleteAtendimento(id);
+  };
+
+  const semanaAnterior = () => setSemanaInicio((s) => addWeeks(s, -1));
+  const proximaSemana = () => setSemanaInicio((s) => addWeeks(s, 1));
+  const estaSemana = () => setSemanaInicio(getWeekStart());
 
   const diasDoMes = useMemo(() => {
     const [ano, mes] = mesAtual.split('-').map(Number);
@@ -117,83 +138,96 @@ export function AgendaPage() {
   return (
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <Popover open={mesPopoverAberto} onOpenChange={setMesPopoverAberto}>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" className="h-10 px-3 gap-2" aria-label="Selecionar mês e ano">
-                <Calendar className="w-5 h-5 text-muted-foreground" />
-                <span className="font-medium text-lg">{mesLabel}</span>
+        <div className="flex items-center gap-3 flex-1">
+          {visualizacao === 'semanal' ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={semanaAnterior}
+                aria-label="Semana anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="start">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-2 py-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setAnoPopover((a) => a - 1);
-                      const novoMes = `${anoPopover - 1}-${String(new Date(mesAtual).getMonth() + 1).padStart(2, '0')}`;
-                      setMesAtual(novoMes);
-                    }}
-                    aria-label="Ano anterior"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
+              <Button variant="outline" size="sm" onClick={estaSemana} aria-label="Esta semana">
+                Hoje
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={proximaSemana}
+                aria-label="Próxima semana"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <span className="font-medium text-lg ml-2">{formatDateLong(semanaInicio)}</span>
+            </div>
+          ) : (
+            <Popover open={mesPopoverAberto} onOpenChange={setMesPopoverAberto}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 px-3 gap-2"
+                  aria-label="Selecionar mês e ano"
+                >
+                  <Calendar className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-medium text-lg">{mesLabel}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="start">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-2 py-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setAnoPopover((a) => a - 1);
+                        const novoMes = `${anoPopover - 1}-${String(new Date(mesAtual).getMonth() + 1).padStart(2, '0')}`;
+                        setMesAtual(novoMes);
+                      }}
+                      aria-label="Ano anterior"
                     >
-                      <path d="M15 18l-6-6 6-6" />
-                    </svg>
-                  </Button>
-                  <span className="font-medium text-lg">{anoPopover}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setAnoPopover((a) => a + 1);
-                      const novoMes = `${anoPopover + 1}-${String(new Date(mesAtual).getMonth() + 1).padStart(2, '0')}`;
-                      setMesAtual(novoMes);
-                    }}
-                    aria-label="Próximo ano"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span className="font-medium text-lg">{anoPopover}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setAnoPopover((a) => a + 1);
+                        const novoMes = `${anoPopover + 1}-${String(new Date(mesAtual).getMonth() + 1).padStart(2, '0')}`;
+                        setMesAtual(novoMes);
+                      }}
+                      aria-label="Próximo ano"
                     >
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
-                  </Button>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1 px-2 pb-2">
+                    {MESES.map((mes, index) => {
+                      const mesNum = index + 1;
+                      const mesStr = `${anoPopover}-${String(mesNum).padStart(2, '0')}`;
+                      const isAtual = mesStr === mesAtual;
+                      return (
+                        <Button
+                          key={mes}
+                          variant={isAtual ? 'default' : 'ghost'}
+                          size="sm"
+                          className="h-10 text-sm"
+                          onClick={() => {
+                            setMesAtual(mesStr);
+                            setMesPopoverAberto(false);
+                          }}
+                        >
+                          {mes.substring(0, 3)}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 gap-1 px-2 pb-2">
-                  {MESES.map((mes, index) => {
-                    const mesNum = index + 1;
-                    const mesStr = `${anoPopover}-${String(mesNum).padStart(2, '0')}`;
-                    const isAtual = mesStr === mesAtual;
-                    return (
-                      <Button
-                        key={mes}
-                        variant={isAtual ? 'default' : 'ghost'}
-                        size="sm"
-                        className="h-10 text-sm"
-                        onClick={() => {
-                          setMesAtual(mesStr);
-                          setMesPopoverAberto(false);
-                        }}
-                      >
-                        {mes.substring(0, 3)}
-                      </Button>
-                    );
-                  })}
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          )}
 
           {diaSelecionado && (
             <span className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium">
@@ -362,6 +396,36 @@ export function AgendaPage() {
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                               </svg>
                             </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                  }}
+                                  aria-label={`Excluir ${atendimento.cliente}`}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-5 h-5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir "{atendimento.cliente}"? Esta
+                                    ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <div className="flex gap-2 justify-end">
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(atendimento.id)}>
+                                    Excluir
+                                  </AlertDialogAction>
+                                </div>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       ))}

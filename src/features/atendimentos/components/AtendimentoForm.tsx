@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
@@ -57,6 +57,8 @@ export function AtendimentoForm({
   const existingAtendimento = useAppSelector((state) =>
     editingId ? selectAtendimentoById(state, editingId) : undefined
   );
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const defaultValues: AtendimentoFormData = {
     cliente: '',
@@ -120,6 +122,8 @@ export function AtendimentoForm({
   }, [valorRecebidoWatch, form]);
 
   const onSubmit = async (data: AtendimentoFormData) => {
+    setSubmitError(null);
+    setIsSubmitting(true);
     try {
       const atendimentoData = {
         cliente: data.cliente,
@@ -144,6 +148,9 @@ export function AtendimentoForm({
       onSuccess();
     } catch (error) {
       console.error('Erro ao salvar atendimento:', error);
+      setSubmitError('Erro ao salvar. Verifique os campos e tente novamente.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -158,6 +165,12 @@ export function AtendimentoForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" id="form-atendimento">
+          {submitError && (
+            <Alert variant="destructive" className="text-sm">
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="cliente">Nome do cliente ou da casa *</Label>
             <Input
@@ -298,8 +311,12 @@ export function AtendimentoForm({
           )}
 
           <div className="flex flex-col sm:flex-row gap-2 pt-2">
-            <Button type="submit" className="w-full sm:w-auto">
-              {isEditing ? 'Salvar Alterações' : 'Adicionar Atendimento'}
+            <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+              {isSubmitting
+                ? 'Salvando...'
+                : isEditing
+                  ? 'Salvar Alterações'
+                  : 'Adicionar Atendimento'}
             </Button>
             {onCancel && (
               <Button
@@ -307,6 +324,7 @@ export function AtendimentoForm({
                 variant="outline"
                 onClick={onCancel}
                 className="w-full sm:w-auto"
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
