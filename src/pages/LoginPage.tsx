@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { useAuth } from '@/context/AuthContext';
 
 export function LoginPage() {
-  const { login, loading, error, user } = useAuth();
+  const { login, loading, error, user, firebaseConfigured } = useAuth();
   const [loginLoading, setLoginLoading] = useState(false);
 
   useEffect(() => {
@@ -25,6 +25,61 @@ export function LoginPage() {
 
   if (user) {
     return null;
+  }
+
+  if (!firebaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Agenda da Diarista</CardTitle>
+            <p className="text-muted-foreground mt-2">Configure o Firebase para continuar</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert variant="destructive">
+              <AlertDescription className="text-center">
+                Firebase não configurado. Crie um arquivo <code>.env</code> com as variáveis:
+                <br />
+                VITE_FIREBASE_API_KEY
+                <br />
+                VITE_FIREBASE_AUTH_DOMAIN
+                <br />
+                VITE_FIREBASE_PROJECT_ID
+                <br />
+                VITE_FIREBASE_STORAGE_BUCKET
+                <br />
+                VITE_FIREBASE_MESSAGING_SENDER_ID
+                <br />
+                VITE_FIREBASE_APP_ID
+              </AlertDescription>
+            </Alert>
+
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                1. Acesse{' '}
+                <a
+                  href="https://console.firebase.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Firebase Console
+                </a>
+              </p>
+              <p>2. Crie um projeto ou selecione existente</p>
+              <p>3. Authentication → Sign-in method → Ative Google</p>
+              <p>4. Project Settings → General → Web app → Copie as configurações</p>
+              <p>
+                5. Crie <code>.env</code> na raiz do projeto com as variáveis acima
+              </p>
+              <p>
+                6. Reinicie o servidor: <code>npm run dev</code>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

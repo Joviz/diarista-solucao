@@ -33,11 +33,18 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+export function isFirebaseConfigured(): boolean {
+  return !!(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId);
+}
+
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 
 export function initFirebase() {
+  if (!isFirebaseConfigured()) {
+    throw new Error('Firebase não configurado. Defina as variáveis de ambiente VITE_FIREBASE_*.');
+  }
   if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
   } else {

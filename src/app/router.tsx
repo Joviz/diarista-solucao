@@ -7,7 +7,7 @@ import { FechamentoPage } from '@/pages/FechamentoPage';
 import { useAuth } from '@/context/AuthContext';
 
 function ProtectedRoute() {
-  const { user, loading } = useAuth();
+  const { user, loading, firebaseConfigured } = useAuth();
 
   if (loading) {
     return (
@@ -17,7 +17,7 @@ function ProtectedRoute() {
     );
   }
 
-  if (!user) {
+  if (!firebaseConfigured || !user) {
     return <Navigate to="/login" replace />;
   }
 
