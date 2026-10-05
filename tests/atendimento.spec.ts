@@ -14,7 +14,7 @@ test.describe('Novo Atendimento - Fluxo completo', () => {
   });
 
   test('deve criar atendimento com dados válidos', async ({ page }) => {
-    await page.goto('http://localhost:5174');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     // Check if we're on login page
@@ -79,7 +79,7 @@ test.describe('Novo Atendimento - Fluxo completo', () => {
   });
 
   test('deve mostrar erro quando campo obrigatório vazio', async ({ page }) => {
-    await page.goto('http://localhost:5174');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     // Check if we're on login page

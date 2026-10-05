@@ -16,7 +16,7 @@ test.describe('Cancelamento e Pagamento - Persistência', () => {
   test('fluxo completo: cancelar, reativar, pagar, desfazer pagamento, excluir', async ({
     page,
   }) => {
-    await page.goto('http://localhost:5174');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     // Check if we're on login page
