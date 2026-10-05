@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -26,10 +26,8 @@ import {
   selectAtendimentosParaHistorico,
   selectTotaisMes,
   selectMesesComAtendimentos,
-  updateSituacao,
-  registrarPagamento,
 } from '@/features/atendimentos';
-import type { AppDispatch, RootState } from '@/app/store';
+import type { RootState } from '@/app/store';
 import { SITUACAO_LABELS, SITUACAO_CORES } from '@/features/atendimentos/types';
 import {
   Dialog,
@@ -51,7 +49,6 @@ const SITUACOES = [
 ];
 
 export function FechamentoPage() {
-  const dispatch = useDispatch<AppDispatch>();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const mesInicial = searchParams.get('mes') || getMesAtual();
@@ -98,11 +95,13 @@ export function FechamentoPage() {
     setSearchParams(params, { replace: true });
   };
 
-  const handleSituacaoChange = (
+  const { updateSituacao } = useData();
+
+  const handleSituacaoChange = async (
     id: string,
     situacao: 'previsto' | 'realizado' | 'pago' | 'cancelado'
   ) => {
-    dispatch(updateSituacao({ id, situacao }));
+    await updateSituacao(id, situacao);
   };
 
   const handleMesChange = (mes: string) => {
@@ -465,20 +464,14 @@ function PagamentoForm({
 }) {
   const [valor, setValor] = useState('');
   const [data, setData] = useState(new Date().toISOString().split('T')[0]);
-  const dispatch = useDispatch<AppDispatch>();
+  const { registrarPagamento } = useData();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const valorNum = parseFloat(valor.replace(',', '.'));
     if (!isNaN(valorNum) && valorNum > 0) {
       const valorCentavos = Math.round(valorNum * 100);
-      dispatch(
-        registrarPagamento({
-          id: atendimentoId,
-          valorRecebido: valorCentavos,
-          dataRecebimento: data,
-        })
-      );
+      await registrarPagamento(atendimentoId, valorCentavos, data);
       onSuccess();
     }
   };
