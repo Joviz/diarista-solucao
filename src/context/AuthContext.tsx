@@ -4,6 +4,7 @@ import type { User } from 'firebase/auth';
 import {
   signInWithGoogle,
   signOutUser,
+  handleRedirectResult,
   onAuthStateChangedListener,
   initFirebase,
   isFirebaseConfigured,
@@ -38,11 +39,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       initFirebase();
-      const unsubscribe = onAuthStateChangedListener((firebaseUser) => {
-        setUser(firebaseUser);
-        setLoading(false);
-      });
-      return unsubscribe;
+
+      handleRedirectResult()
+        .then((redirectUser) => {
+          if (redirectUser) {
+            setUser(redirectUser);
+          }
+        })
+        .catch((err) => {
+          console.error('Erro no redirect:', err);
+        })
+        .finally(() => {
+          const unsubscribe = onAuthStateChangedListener((firebaseUser) => {
+            setUser(firebaseUser);
+            setLoading(false);
+          });
+          return unsubscribe;
+        });
     } catch (err) {
       setError('Erro ao inicializar Firebase. Verifique a configuração.');
       console.error(err);

@@ -2,7 +2,8 @@ import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
   getAuth,
   type Auth,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
@@ -67,10 +68,15 @@ export function getFirebaseDb(): Firestore {
 
 export const googleProvider = new GoogleAuthProvider();
 
-export async function signInWithGoogle(): Promise<User> {
+export async function signInWithGoogle(): Promise<void> {
   const auth = getFirebaseAuth();
-  const result = await signInWithPopup(auth, googleProvider);
-  return result.user;
+  await signInWithRedirect(auth, googleProvider);
+}
+
+export async function handleRedirectResult(): Promise<User | null> {
+  const auth = getFirebaseAuth();
+  const result = await getRedirectResult(auth);
+  return result?.user ?? null;
 }
 
 export async function signOutUser(): Promise<void> {
