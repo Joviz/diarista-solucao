@@ -175,6 +175,23 @@ export function AtendimentoForm({
               <AlertDescription>{submitError}</AlertDescription>
             </Alert>
           )}
+          {form.formState.errors.dataRecebimento && (
+            <Alert variant="destructive" className="text-sm">
+              <AlertDescription>{form.formState.errors.dataRecebimento.message}</AlertDescription>
+            </Alert>
+          )}
+          {form.formState.errors.valorRecebido && (
+            <Alert variant="destructive" className="text-sm">
+              <AlertDescription>{form.formState.errors.valorRecebido.message}</AlertDescription>
+            </Alert>
+          )}
+          {form.formState.errors.root && (
+            <Alert variant="destructive" className="text-sm">
+              <AlertDescription>
+                {form.formState.errors.root?.message || 'Erro de validação'}
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="cliente">Nome do cliente ou da casa *</Label>

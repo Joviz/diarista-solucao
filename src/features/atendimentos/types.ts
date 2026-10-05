@@ -21,12 +21,12 @@ export interface AtendimentoFormData {
   endereco: string;
   data: string;
   horario: string;
-  duracao: string;
+  duracao?: string;
   valorCombinado: string; // string para o formulário
   situacao: SituacaoAtendimento;
-  observacao: string;
-  dataRecebimento: string;
-  valorRecebido: string;
+  observacao?: string;
+  dataRecebimento?: string;
+  valorRecebido?: string;
 }
 
 export interface TotaisMes {

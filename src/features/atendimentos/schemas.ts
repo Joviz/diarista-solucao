@@ -24,7 +24,7 @@ const atendimentoFormSchemaBase = z.object({
   endereco: z.string().min(1, 'Endereço é obrigatório').max(200),
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
   horario: z.string().regex(/^\d{2}:\d{2}$/, 'Horário inválido (HH:mm)'),
-  duracao: z.string().max(20).default(''),
+  duracao: z.string().max(20).optional(),
   valorCombinado: z
     .string()
     .min(1, 'Valor é obrigatório')
@@ -36,14 +36,14 @@ const atendimentoFormSchemaBase = z.object({
       { message: 'Valor deve ser maior que zero' }
     ),
   situacao: z.enum(['previsto', 'realizado', 'pago', 'cancelado']),
-  observacao: z.string().max(500).default(''),
+  observacao: z.string().max(500).optional(),
   dataRecebimento: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .default(''),
+    .optional(),
   valorRecebido: z
     .string()
-    .default('')
+    .optional()
     .refine(
       (val) => {
         if (!val) return true;
