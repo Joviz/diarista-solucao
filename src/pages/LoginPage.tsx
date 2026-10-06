@@ -12,7 +12,7 @@ function logLoginStep(step: string, data?: Record<string, unknown>) {
 }
 
 export function LoginPage() {
-  const { login, loading, error, user, firebaseConfigured } = useAuth();
+  const { login, loading, error, user, firebaseConfigured, setError } = useAuth();
   const [loginLoading, setLoginLoading] = useState(false);
 
   useEffect(() => {
@@ -28,6 +28,11 @@ export function LoginPage() {
     setLoginLoading(true);
     try {
       await login();
+      logLoginStep('LOGIN_COMPLETED');
+    } catch (err) {
+      logLoginStep('LOGIN_ERROR', { error: err instanceof Error ? err.message : String(err) });
+      setError('Erro ao fazer login com Google. Tente novamente.');
+      console.error(err);
     } finally {
       setLoginLoading(false);
     }

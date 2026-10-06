@@ -4,9 +4,12 @@ import {
   type Auth,
   signInWithRedirect,
   getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
   type User,
   connectAuthEmulator,
 } from 'firebase/auth';
@@ -58,6 +61,11 @@ export function initFirebase() {
   auth = getAuth(app);
   db = getFirestore(app);
 
+  // Set persistence to LOCAL for better session persistence
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn('Failed to set auth persistence:', err);
+  });
+
   // Connect to emulators in development/test mode
   if (USE_EMULATORS) {
     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
@@ -79,16 +87,35 @@ export function getFirebaseDb(): Firestore {
 }
 
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+});
 
-export async function signInWithGoogle(): Promise<void> {
+export async function signInWithGoogle(): Promise<User> {
   const auth = getFirebaseAuth();
-  await signInWithRedirect(auth, googleProvider);
+
+  // Try popup first (better for Vercel), fallback to redirect
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (popupErr) {
+    console.warn('Popup blocked or failed, falling back to redirect:', popupErr);
+    // Fallback to redirect if popup fails
+    await signInWithRedirect(getFirebaseAuth(), googleProvider);
+    // redirect will navigate away, so we won't reach here
+    throw new Error('Redirect initiated');
+  }
 }
 
 export async function handleRedirectResult(): Promise<User | null> {
   const auth = getFirebaseAuth();
-  const result = await getRedirectResult(auth);
-  return result?.user ?? null;
+  try {
+    const result = await getRedirectResult(auth);
+    return result?.user ?? null;
+  } catch (err) {
+    console.error('Error handling redirect result:', err);
+    return null;
+  }
 }
 
 export async function signOutUser(): Promise<void> {
@@ -96,7 +123,7 @@ export async function signOutUser(): Promise<void> {
   await signOut(auth);
 }
 
-export function onAuthStateChangedListener(callback: (user: User | null) => void): Unsubscribe {
+export function onAuthStateChangedListener(callback: (user: User | null) => void): () => void {
   const auth = getFirebaseAuth();
   return onAuthStateChanged(auth, callback);
 }

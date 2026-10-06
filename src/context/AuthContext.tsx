@@ -17,6 +17,7 @@ interface AuthContextType {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
+  setError: (error: string | null) => void;
   firebaseConfigured: boolean;
 }
 
@@ -178,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, login, logout, clearError, firebaseConfigured }}
+      value={{ user, loading, error, login, logout, clearError, setError, firebaseConfigured }}
     >
       {children}
     </AuthContext.Provider>
