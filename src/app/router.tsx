@@ -14,9 +14,9 @@ function logRouteStep(step: string, data?: Record<string, unknown>) {
 }
 
 function ProtectedRoute() {
-  const { user, loading, firebaseConfigured } = useAuth();
+  const { user, loading } = useAuth();
 
-  logRouteStep('PROTECTED_ROUTE_RENDER', { loading, firebaseConfigured, hasUser: !!user });
+  logRouteStep('PROTECTED_ROUTE_RENDER', { loading, hasUser: !!user });
 
   if (loading) {
     logRouteStep('PROTECTED_ROUTE_LOADING');
@@ -27,8 +27,8 @@ function ProtectedRoute() {
     );
   }
 
-  if (!firebaseConfigured || !user) {
-    logRouteStep('PROTECTED_ROUTE_REDIRECT_TO_LOGIN', { firebaseConfigured, hasUser: !!user });
+  if (!user) {
+    logRouteStep('PROTECTED_ROUTE_REDIRECT_TO_LOGIN', { hasUser: !!user });
     return <Navigate to="/login" replace />;
   }
 

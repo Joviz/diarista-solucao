@@ -92,18 +92,26 @@ googleProvider.setCustomParameters({
 });
 
 export async function signInWithGoogle(): Promise<User> {
-  const auth = getFirebaseAuth();
-
-  // Try popup first (better for Vercel), fallback to redirect
+  // Try popup first (works better on Vercel and avoids Safari ITP issues)
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(getFirebaseAuth(), googleProvider);
     return result.user;
   } catch (popupErr) {
+    const errorCode = (popupErr as { code?: string })?.code;
     console.warn('Popup blocked or failed, falling back to redirect:', popupErr);
-    // Fallback to redirect if popup fails
-    await signInWithRedirect(getFirebaseAuth(), googleProvider);
-    // redirect will navigate away, so we won't reach here
-    throw new Error('Redirect initiated');
+
+    // If popup is blocked, try redirect as fallback
+    if (
+      errorCode === 'auth/popup-blocked' ||
+      errorCode === 'auth/cancelled-popup-request' ||
+      errorCode === 'auth/popup-closed-by-user'
+    ) {
+      await signInWithRedirect(getFirebaseAuth(), googleProvider);
+      throw new Error('Redirect initiated');
+    }
+
+    // Re-throw other errors
+    throw popupErr;
   }
 }
 
