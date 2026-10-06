@@ -4,17 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { useAuth } from '@/context/AuthContext';
 
+function logLoginStep(step: string, data?: Record<string, unknown>) {
+  const timestamp = new Date().toISOString();
+  const host = typeof window !== 'undefined' ? window.location.host : 'ssr';
+  const path = typeof window !== 'undefined' ? window.location.pathname : 'ssr';
+  console.log(`[LOGIN:${step}] ${timestamp} host=${host} path=${path}`, data ?? '');
+}
+
 export function LoginPage() {
   const { login, loading, error, user, firebaseConfigured } = useAuth();
   const [loginLoading, setLoginLoading] = useState(false);
 
   useEffect(() => {
+    logLoginStep('EFFECT_USER_CHECK', { user: !!user, loading, firebaseConfigured });
     if (user) {
+      logLoginStep('REDIRECT_TO_HOME', { user: !!user });
       window.location.href = '/';
     }
   }, [user]);
 
   const handleLogin = async () => {
+    logLoginStep('HANDLE_LOGIN_CLICKED', { loginLoading, loading });
     setLoginLoading(true);
     try {
       await login();
@@ -23,11 +33,15 @@ export function LoginPage() {
     }
   };
 
+  logLoginStep('RENDER', { user: !!user, loading, firebaseConfigured, error: !!error });
+
   if (user) {
+    logLoginStep('RENDER_USER_EXISTS_RETURN_NULL');
     return null;
   }
 
   if (!firebaseConfigured) {
+    logLoginStep('RENDER_FIREBASE_NOT_CONFIGURED');
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <Card className="w-full max-w-md">

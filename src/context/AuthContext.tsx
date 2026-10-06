@@ -22,6 +22,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function logAuthStep(step: string, data?: Record<string, unknown>) {
+  const timestamp = new Date().toISOString();
+  const host = typeof window !== 'undefined' ? window.location.host : 'ssr';
+  const path = typeof window !== 'undefined' ? window.location.pathname : 'ssr';
+  console.log(`[AUTH:${step}] ${timestamp} host=${host} path=${path}`, data ?? '');
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,9 +39,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     const configured = isFirebaseConfigured();
+    logAuthStep('CONFIG_CHECK', { configured });
     setFirebaseConfigured(configured);
 
     if (!configured) {
+      logAuthStep('CONFIG_NOT_CONFIGURED', { loading: false });
       setLoading(false);
       return;
     }
@@ -43,38 +52,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
+        logAuthStep('INIT_FIREBASE_START');
         initFirebase();
+        logAuthStep('INIT_FIREBASE_DONE');
 
         // Process redirect result first
         let redirectUser: User | null = null;
         try {
+          logAuthStep('HANDLE_REDIRECT_START');
           redirectUser = await handleRedirectResult();
+          logAuthStep('HANDLE_REDIRECT_DONE', {
+            hasUser: !!redirectUser,
+            uid: redirectUser?.uid ?? null,
+          });
         } catch (redirectErr) {
-          console.error('Erro no redirect:', redirectErr);
+          logAuthStep('HANDLE_REDIRECT_ERROR', {
+            error: redirectErr instanceof Error ? redirectErr.message : String(redirectErr),
+            errorCode: (redirectErr as { code?: string })?.code,
+          });
         }
 
         // Set up auth state listener
+        logAuthStep('ON_AUTH_STATE_CHANGED_REGISTER');
         const unsubscribe = onAuthStateChangedListener((firebaseUser) => {
           if (cancelled) return;
 
-          // If we got a redirect user, prefer it over the auth state
-          // (redirect result is more immediate and reliable for the current session)
+          logAuthStep('ON_AUTH_STATE_CHANGED_FIRE', {
+            hasFirebaseUser: !!firebaseUser,
+            uid: firebaseUser?.uid ?? null,
+            authInitialized,
+          });
+
+          if (cancelled) return;
+
           const userToSet = redirectUser ?? firebaseUser;
 
           if (!authInitialized) {
+            logAuthStep('AUTH_INITIALIZED_FIRST', {
+              hasRedirectUser: !!redirectUser,
+              hasFirebaseUser: !!firebaseUser,
+              userToSet: userToSet ? 'user' : 'null',
+            });
             authInitialized = true;
             setUser(userToSet);
             setLoading(false);
           } else {
+            logAuthStep('AUTH_STATE_CHANGE_SUBSEQUENT', {
+              hasFirebaseUser: !!firebaseUser,
+            });
             setUser(firebaseUser);
           }
         });
 
         // If we got a redirect user, set it immediately
         if (redirectUser && !cancelled) {
-          setUser(redirectUser);
+          logAuthStep('SET_REDIRECT_USER_IMMEDIATE', {
+            uid: redirectUser.uid,
+            authInitialized,
+          });
           if (!authInitialized) {
             authInitialized = true;
+            setUser(redirectUser);
             setLoading(false);
           }
         }
@@ -85,6 +123,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       } catch (err) {
         if (!cancelled) {
+          logAuthStep('INIT_AUTH_CATCH_ERROR', {
+            error: err instanceof Error ? err.message : String(err),
+          });
           setError('Erro ao inicializar Firebase. Verifique a configuração.');
           console.error(err);
           setLoading(false);
@@ -106,8 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setError(null);
     try {
+      logAuthStep('LOGIN_CLICKED', { firebaseConfigured });
       await signInWithGoogle();
+      logAuthStep('SIGN_IN_WITH_REDIRECT_CALLED');
     } catch (err) {
+      logAuthStep('LOGIN_ERROR', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       setError('Erro ao fazer login com Google. Tente novamente.');
       console.error(err);
     }
@@ -116,8 +162,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setError(null);
     try {
+      logAuthStep('LOGOUT_CLICKED');
       await signOutUser();
+      logAuthStep('SIGN_OUT_COMPLETE');
     } catch (err) {
+      logAuthStep('LOGOUT_ERROR', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       setError('Erro ao sair. Tente novamente.');
       console.error(err);
     }
