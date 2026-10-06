@@ -121,8 +121,9 @@ export async function handleRedirectResult(): Promise<User | null> {
     const result = await getRedirectResult(auth);
     return result?.user ?? null;
   } catch (err) {
-    console.error('Error handling redirect result:', err);
-    return null;
+    // Log only the error code: Firebase auth errors may carry personal data (e.g. email).
+    console.error('Error handling redirect result:', (err as { code?: string })?.code ?? 'unknown');
+    throw err;
   }
 }
 

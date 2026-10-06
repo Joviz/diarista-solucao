@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Local WebKit runtime libs (no-sudo Playwright setup)
+.cache-webkit-deps/

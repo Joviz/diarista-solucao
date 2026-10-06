@@ -13,6 +13,15 @@ function logRouteStep(step: string, data?: Record<string, unknown>) {
   console.log(`[ROUTE:${step}] ${timestamp} host=${host} path=${path}`, data ?? '');
 }
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3" role="status">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <p className="text-sm text-muted-foreground">Carregando...</p>
+    </div>
+  );
+}
+
 function ProtectedRoute() {
   const { user, loading } = useAuth();
 
@@ -20,11 +29,7 @@ function ProtectedRoute() {
 
   if (loading) {
     logRouteStep('PROTECTED_ROUTE_LOADING');
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {
@@ -41,15 +46,8 @@ function PublicRoute() {
 
   logRouteStep('PUBLIC_ROUTE_RENDER', { loading, hasUser: !!user });
 
-  if (loading) {
-    logRouteStep('PUBLIC_ROUTE_LOADING');
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
+  // While auth is still loading we render the login page anyway (it disables the button and
+  // shows "Carregando autenticação..."), so the screen is never blank on slow/blocked auth.
   if (user) {
     logRouteStep('PUBLIC_ROUTE_REDIRECT_TO_HOME', { hasUser: !!user });
     return <Navigate to="/" replace />;

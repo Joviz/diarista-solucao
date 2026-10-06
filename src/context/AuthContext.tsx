@@ -37,81 +37,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     let authInitialized = false;
+    let unsubscribeAuth: (() => void) | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-    const initializeAuth = async () => {
-      try {
-        logAuthStep('INIT_FIREBASE_START');
-        initFirebase();
-        logAuthStep('INIT_FIREBASE_DONE');
+    try {
+      logAuthStep('INIT_FIREBASE_START');
+      initFirebase();
+      logAuthStep('INIT_FIREBASE_DONE');
+    } catch (err) {
+      logAuthStep('INIT_AUTH_CATCH_ERROR', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      setError('Erro ao inicializar Firebase. Verifique a configuração.');
+      console.error(err);
+      setLoading(false);
+      return;
+    }
 
-        // Process redirect result first (for signInWithRedirect flow)
-        try {
-          logAuthStep('HANDLE_REDIRECT_START');
-          await handleRedirectResult();
-          logAuthStep('HANDLE_REDIRECT_DONE');
-        } catch (redirectErr) {
-          logAuthStep('HANDLE_REDIRECT_ERROR', {
-            error: redirectErr instanceof Error ? redirectErr.message : String(redirectErr),
-            errorCode: (redirectErr as { code?: string })?.code,
-          });
-        }
+    // IMPORTANT: the auth listener and the safety timeout are registered BEFORE (and
+    // independently of) getRedirectResult(). getRedirectResult() loads a cross-site iframe
+    // from the Firebase authDomain; on iOS Safari (ITP / content blockers / flaky mobile
+    // networks) that iframe may never answer, and awaiting it first left `loading` stuck at
+    // `true` forever -> blank screen with no login button.
+    try {
+      logAuthStep('ON_AUTH_STATE_CHANGED_REGISTER');
+      unsubscribeAuth = onAuthStateChangedListener((firebaseUser) => {
+        if (cancelled) return;
 
-        // Set up auth state listener
-        logAuthStep('ON_AUTH_STATE_CHANGED_REGISTER');
-        onAuthStateChangedListener((firebaseUser) => {
-          if (cancelled) return;
-
-          logAuthStep('ON_AUTH_STATE_CHANGED_FIRE', {
-            hasFirebaseUser: !!firebaseUser,
-            uid: firebaseUser?.uid ?? null,
-            authInitialized,
-          });
-
-          if (cancelled) return;
-
-          if (!authInitialized) {
-            logAuthStep('AUTH_INITIALIZED_FIRST', {
-              hasFirebaseUser: !!firebaseUser,
-            });
-            authInitialized = true;
-            setUser(firebaseUser);
-            setLoading(false);
-          } else {
-            logAuthStep('AUTH_STATE_CHANGE_SUBSEQUENT', {
-              hasFirebaseUser: !!firebaseUser,
-            });
-            setUser(firebaseUser);
-          }
+        logAuthStep('ON_AUTH_STATE_CHANGED_FIRE', {
+          hasFirebaseUser: !!firebaseUser,
+          authInitialized,
         });
 
-        // Safety timeout: if auth doesn't initialize within 10 seconds, stop loading
-        const timeoutId = setTimeout(() => {
-          if (!cancelled && !authInitialized) {
-            logAuthStep('AUTH_INIT_TIMEOUT', { loading: true });
-            setLoading(false);
-          }
-        }, 10000);
-
-        return () => {
-          cancelled = true;
-          clearTimeout(timeoutId);
-        };
-      } catch (err) {
-        if (!cancelled) {
-          logAuthStep('INIT_AUTH_CATCH_ERROR', {
-            error: err instanceof Error ? err.message : String(err),
-          });
-          setError('Erro ao inicializar Firebase. Verifique a configuração.');
-          console.error(err);
+        if (!authInitialized) {
+          logAuthStep('AUTH_INITIALIZED_FIRST', { hasFirebaseUser: !!firebaseUser });
+          authInitialized = true;
+          setUser(firebaseUser);
           setLoading(false);
+        } else {
+          logAuthStep('AUTH_STATE_CHANGE_SUBSEQUENT', { hasFirebaseUser: !!firebaseUser });
+          setUser(firebaseUser);
         }
-      }
-    };
+      });
+    } catch (err) {
+      logAuthStep('ON_AUTH_STATE_CHANGED_ERROR', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      setError('Não foi possível verificar sua sessão. Tente entrar novamente.');
+      setLoading(false);
+    }
 
-    initializeAuth();
+    // Safety net: if Firebase never reports the initial auth state, stop loading and let the
+    // user see the login screen with an explanation instead of an endless blank/spinner page.
+    timeoutId = setTimeout(() => {
+      if (!cancelled && !authInitialized) {
+        logAuthStep('AUTH_INIT_TIMEOUT');
+        setError(
+          'Não foi possível verificar sua sessão. Verifique sua conexão e tente entrar novamente.'
+        );
+        setLoading(false);
+      }
+    }, 10000);
+
+    // Process a pending signInWithRedirect result in the background. On success, the
+    // onAuthStateChanged listener above receives the user; here we only surface errors.
+    logAuthStep('HANDLE_REDIRECT_START');
+    handleRedirectResult()
+      .then(() => logAuthStep('HANDLE_REDIRECT_DONE'))
+      .catch((redirectErr) => {
+        const errorCode = (redirectErr as { code?: string })?.code;
+        logAuthStep('HANDLE_REDIRECT_ERROR', { errorCode });
+        if (cancelled) return;
+        if (errorCode === 'auth/unauthorized-domain') {
+          setError(
+            'Este domínio não está autorizado no Firebase. Configure no console do Firebase.'
+          );
+        } else if (errorCode === 'auth/network-request-failed') {
+          setError('Erro de rede. Verifique sua conexão e tente novamente.');
+        } else if (errorCode) {
+          setError('Não foi possível concluir o login com Google. Tente novamente.');
+        }
+      });
 
     return () => {
       cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      unsubscribeAuth?.();
     };
   }, []);
 
@@ -144,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setError('Erro ao fazer login com Google. Tente novamente.');
       }
-      console.error('Login error:', err);
+      console.error('Login error:', errorCode ?? 'unknown');
     }
   };
 
