@@ -29,6 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseConfigured, setFirebaseConfigured] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const configured = isFirebaseConfigured();
     setFirebaseConfigured(configured);
 
@@ -37,30 +39,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    try {
-      initFirebase();
+    let authInitialized = false;
 
-      handleRedirectResult()
-        .then((redirectUser) => {
-          if (redirectUser) {
-            setUser(redirectUser);
-          }
-        })
-        .catch((err) => {
-          console.error('Erro no redirect:', err);
-        })
-        .finally(() => {
-          const unsubscribe = onAuthStateChangedListener((firebaseUser) => {
-            setUser(firebaseUser);
+    const initializeAuth = async () => {
+      try {
+        initFirebase();
+
+        // Process redirect result first
+        let redirectUser: User | null = null;
+        try {
+          redirectUser = await handleRedirectResult();
+        } catch (redirectErr) {
+          console.error('Erro no redirect:', redirectErr);
+        }
+
+        // Set up auth state listener
+        const unsubscribe = onAuthStateChangedListener((firebaseUser) => {
+          if (cancelled) return;
+
+          // If we got a redirect user, prefer it over the auth state
+          // (redirect result is more immediate and reliable for the current session)
+          const userToSet = redirectUser ?? firebaseUser;
+
+          if (!authInitialized) {
+            authInitialized = true;
+            setUser(userToSet);
             setLoading(false);
-          });
-          return unsubscribe;
+          } else {
+            setUser(firebaseUser);
+          }
         });
-    } catch (err) {
-      setError('Erro ao inicializar Firebase. Verifique a configuração.');
-      console.error(err);
-      setLoading(false);
-    }
+
+        // If we got a redirect user, set it immediately
+        if (redirectUser && !cancelled) {
+          setUser(redirectUser);
+          if (!authInitialized) {
+            authInitialized = true;
+            setLoading(false);
+          }
+        }
+
+        return () => {
+          cancelled = true;
+          unsubscribe();
+        };
+      } catch (err) {
+        if (!cancelled) {
+          setError('Erro ao inicializar Firebase. Verifique a configuração.');
+          console.error(err);
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async () => {
